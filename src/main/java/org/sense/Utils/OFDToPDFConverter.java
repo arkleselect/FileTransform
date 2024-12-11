@@ -1,70 +1,61 @@
 package org.sense.Utils;
 
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
-import org.ofdrw.reader.OFDReader;
+import org.ofdrw.converter.ofdconverter.DocConverter;
+import org.ofdrw.converter.ofdconverter.PDFConverter;
 
-import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import javax.imageio.ImageIO;
 
 public class OFDToPDFConverter {
 
     /**
-     * 将 OFD 文件转换为 PDF 文件
+     * 将一个 OFD 文件转换为 PDF 文件。
      *
-     * @param ofdPath  输入的 OFD 文件路径
-     * @param pdfPath  输出的 PDF 文件路径
-     * @throws IOException 转换过程中可能抛出的异常
+     * @param inputPath 输入的 OFD 文件路径。
+     * @param outputPath 输出的 PDF 文件路径。
+     * @throws IOException 如果在文件处理或转换过程中发生错误。
      */
-    public void convert(String ofdPath, String pdfPath) throws IOException {
-        // 使用 try-with-resources 确保资源正确关闭
-        try (OFDReader reader = new OFDReader(Paths.get(ofdPath));
-             PDDocument document = new PDDocument()) {
+    public static void convertOFDToPDF(Path inputPath, Path outputPath) throws IOException {
+        // 调试输出路径信息
+        System.out.println("输入文件路径: " + inputPath);
+        System.out.println("输出文件路径: " + outputPath);
 
-            // 获取 OFD 文档的总页数
-            int numberOfPages = reader.getNumberOfPages();
+        // 确保输入文件存在
+        if (inputPath == null || !Files.exists(inputPath)) {
+            throw new IllegalArgumentException("输入的 OFD 文件不存在: " + inputPath);
+        }
 
-            for (int pageIndex = 0; pageIndex < numberOfPages; pageIndex++) {
-                // 渲染 OFD 页为 BufferedImage
-                BufferedImage image = reader.renderPage(pageIndex);
-                reader.
+        // 确保输出路径所在目录存在
+        if (!Files.exists(outputPath.getParent())) {
+            Files.createDirectories(outputPath.getParent());
+        }
 
-                // 创建新的 PDF 页面
-                PDPage pdfPage = new PDPage();
-                document.addPage(pdfPage);
+        // 打印路径信息
+        System.out.println("OFD 输入文件路径: " + inputPath.toAbsolutePath());
+        System.out.println("PDF 输出文件路径: " + outputPath.toAbsolutePath());
 
-                // 将渲染的图像插入到 PDF 页面中
-                PDImageXObject pdfImage = PDImageXObject.createFromFileByContent(
-                        saveTempImage(image), document);
-
-                try (PDPageContentStream contentStream = new PDPageContentStream(document, pdfPage)) {
-                    // 设置图像位置和大小
-                    contentStream.drawImage(pdfImage, 0, 0, pdfPage.getMediaBox().getWidth(),
-                            pdfPage.getMediaBox().getHeight());
-                }
-            }
-
-            // 保存生成的 PDF
-            document.save(pdfPath);
+        // 转换 OFD -> PDF
+        try (DocConverter converter = new PDFConverter(outputPath)) {
+            System.out.println("开始转换...");
+            converter.convert(inputPath);
+            System.out.println("转换完成！");
         }
     }
 
-    /**
-     * 将 BufferedImage 保存为临时文件
-     *
-     * @param image BufferedImage 对象
-     * @return 保存的临时文件
-     * @throws IOException 文件保存异常
-     */
-    private File saveTempImage(BufferedImage image) throws IOException {
-        File tempFile = File.createTempFile("ofd_page", ".png");
-        ImageIO.write(image, "png", tempFile);
-        tempFile.deleteOnExit(); // 在程序退出时自动删除临时文件
-        return tempFile;
+    public static void main(String[] args) {
+        try {
+            // 示例用法
+            Path inputPath = Paths.get("/Users/mortysmith/Desktop/test.ofd");
+            Path outputPath = Paths.get("/Users/mortysmith/Desktop/output.pdf");
+
+            convertOFDToPDF(inputPath, outputPath);
+
+            System.out.println("OFD 转 PDF 成功！");
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println("OFD 转 PDF 失败。");
+        }
     }
 }
